@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Fang den Dieb! – Zu zweit am Tisch</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,700;9..144,800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    :root {
+      --night: #071d1a;
+      --table: #0b5d50;
+      --table-deep: #043d35;
+      --line: rgba(229, 255, 244, .17);
+      --cream: #fff7e8;
+      --gold: #ffc94d;
+      --coral: #f2644d;
+      --mint: #d9efe0;
+      --ink: #173e35;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+    body {
+      width: 100%;
+      height: 100dvh;
+      margin: 0;
+      color: var(--cream);
+      font-family: "DM Sans", sans-serif;
+      background: linear-gradient(155deg, rgb(16, 47, 42), rgb(6, 21, 18));
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-shell {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* Tisch-Bereich */
+    .game-table {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      border: 1px solid rgba(255, 246, 219, .19);
+      border-radius: 28px;
+      background: radial-gradient(ellipse at center, #14846f 0%, var(--table) 44%, var(--table-deep) 100%);
+      box-shadow:
+        inset 0 0 0 8px rgba(0, 0, 0, .10),
+        inset 0 0 60px rgba(0, 0, 0, .23),
+        0 12px 35px rgba(0, 0, 0, .4);
+      padding: 12px;
+    }
+
+    .game-table::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      pointer-events: none;
+    }
+
+    /* Spielerbereiche */
+    .player-zone {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      border: 1.5px solid rgba(255,255,255,.18);
+      border-radius: 18px;
+      background: rgba(3, 43, 37, .48);
+      backdrop-filter: blur(4px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+      transition: all .25s ease;
+    }
+
+    .player-zone.active-player {
+      border-color: var(--gold);
+      background: rgba(6, 64, 54, .75);
+      box-shadow: 0 0 16px rgba(255, 201, 77, .35), inset 0 1px 0 rgba(255,255,255,.15);
+    }
+
+    .player-content {
+      padding: 8px 10px 10px;
+    }
+
+    .opponent-content {
+      transform: rotate(180deg);
+    }
+
+    .player-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .player-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .turn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #78aa9e;
+      transition: background .2s ease;
+    }
+
+    .active-player .turn-dot {
+      background: var(--gold);
+      box-shadow: 0 0 8px var(--gold);
+    }
+
+    .player-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--cream);
+    }
+
+    .turn-marker {
+      display: none;
+      border: 1px solid rgba(255, 201, 77, .6);
+      border-radius: 999px;
+      padding: 2px 7px;
+      color: #fff1c8;
+      background: rgba(255, 201, 77, .18);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .active-player .turn-marker { display: inline-flex; }
+
+    .card-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+    }
+
+    .card-slot {
+      aspect-ratio: .68;
+      border: 1.5px dashed rgba(237, 255, 247, .35);
+      border-radius: 8px;
+      background: rgba(0, 22, 18, .2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slot-placeholder {
+      font-size: 18px;
+      opacity: 0.22;
+      filter: grayscale(1);
+    }
+
+    /* Miniatur-Karten im Tresor */
+    .mini-card {
+      width: 100%;
+      height: 100%;
+      border-radius: 7px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255,255,255,.9);
+      background: linear-gradient(135deg, #fffdf7, #ecdfc7);
+      color: var(--ink);
+      box-shadow: 0 2px 6px rgba(0,0,0,.3);
+      animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .mini-card .sym { font-size: 19px; line-height: 1; }
+    .mini-card .val { font-size: 7.5px; font-weight: 800; margin-top: 1px; }
+
+    @keyframes popIn {
+      from { transform: scale(0.6); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* Tischmitte & Stapel */
+    .center-zone {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 0;
+    }
+
+    .pile-pair {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+
+    .pile-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .pile-caption {
+      margin: 0 0 6px;
+      color: rgba(235, 255, 246, .85);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .deck-frame {
+      position: relative;
+      width: 126px;
+      height: 172px;
+      cursor: pointer;
+    }
+
+    /* Ziehstapel */
+    .draw-pile-btn {
+      position: absolute;
+      inset: 0;
+      border-radius: 15px;
+      border: 3px solid #ffe29a;
+      background-color: #d95246;
+      background-image:
+        linear-gradient(135deg, transparent 47%, rgba(255,255,255,.23) 48% 52%, transparent 53%),
+        linear-gradient(45deg, transparent 47%, rgba(255,255,255,.17) 48% 52%, transparent 53%),
+        repeating-linear-gradient(0deg, rgba(255,255,255,.12) 0 1px, transparent 1px 7px);
+      box-shadow: inset 0 0 0 5px rgba(90, 26, 29, .3), 0 10px 20px rgba(0,0,0,.35);
+      transition: transform .15s ease, filter .15s ease;
+      cursor: pointer;
+    }
+
+    .draw-pile-btn:active {
+      transform: scale(0.96) rotate(-1deg);
+      filter: brightness(1.1);
+    }
+
+    /* Schein-Ebenen unter dem Stapel für 3D-Look */
+    .pile-underlayer {
+      position: absolute;
+      inset: 0;
+      border-radius: 15px;
+      border: 2px solid #9b352f;
+      background: #b3433a;
+      pointer-events: none;
+    }
+    .pile-underlayer.l1 { transform: translate(5px, 6px) rotate(3deg); }
+    .pile-underlayer.l2 { transform: translate(2px, 3px) rotate(-2deg); background: #d15847; }
+
+    /* Runden-Beutestapel (Sichern) */
+    .loot-pile-btn {
+      position: absolute;
+      inset: 0;
+      border-radius: 15px;
+      border: 3px dashed rgba(255, 247, 232, .3);
+      background: rgba(3, 43, 37, .3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all .2s ease;
+    }
+
+    .loot-pile-btn.has-cards {
+      border: 3px solid #fffaf0;
+      background: linear-gradient(140deg, #fffefa, #eddfc7);
+      color: var(--ink);
+      box-shadow: 0 14px 28px rgba(0,0,0,.45);
+      cursor: pointer;
+      animation: popIn 0.2s ease-out;
+    }
+
+    .loot-pile-btn.has-cards:active {
+      transform: scale(0.96);
+    }
+
+    .loot-content {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .loot-pile-btn.has-cards .loot-content {
+      display: flex;
+    }
+
+    .loot-empty-hint {
+      color: rgba(229, 255, 244, .4);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .loot-pile-btn.has-cards .loot-empty-hint {
+      display: none;
+    }
+
+    .loot-symbol { font-size: 48px; line-height: 1; }
+    .loot-name { font-size: 13px; font-weight: 800; margin-top: 4px; }
+    .loot-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: var(--coral);
+      color: white;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 999px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    }
+
+    /* Riesen-Dieb Vollbild-Overlay */
+    .thief-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 50;
+      background: rgba(145, 27, 27, 0.94);
+      backdrop-filter: blur(8px);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      cursor: pointer;
+      animation: alertPulse 0.3s ease-out;
+    }
+
+    .thief-overlay.active { display: flex; }
+
+    .thief-avatar {
+      font-size: 100px;
+      line-height: 1;
+      margin-bottom: 12px;
+      animation: thiefShake 0.45s infinite alternate ease-in-out;
+    }
+
+    .thief-title {
+      font-family: "Fraunces", serif;
+      font-size: 34px;
+      font-weight: 800;
+      color: #ffe29a;
+      margin: 0 0 6px;
+    }
+
+    .thief-desc {
+      font-size: 14px;
+      color: #fff;
+      margin-bottom: 24px;
+      max-width: 260px;
+      line-height: 1.35;
+    }
+
+    .thief-dismiss-btn {
+      border: 2px solid #ffe29a;
+      background: #ffe29a;
+      color: #5c1813;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 10px 20px;
+      border-radius: 14px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      box-shadow: 0 6px 16px rgba(0,0,0,.35);
+    }
+
+    @keyframes thiefShake {
+      from { transform: rotate(-8deg) scale(0.96); }
+      to { transform: rotate(8deg) scale(1.04); }
+    }
+
+    @keyframes alertPulse {
+      from { opacity: 0; transform: scale(1.05); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* Sieges-Dialog */
+    .win-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      background: rgba(7, 29, 26, 0.92);
+      backdrop-filter: blur(10px);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+    }
+    .win-overlay.active { display: flex; }
+
+    .win-trophy { font-size: 80px; margin-bottom: 10px; }
+    .win-title {
+      font-family: "Fraunces", serif;
+      font-size: 32px;
+      color: var(--gold);
+      margin: 0 0 8px;
+    }
+    .win-desc { font-size: 14px; color: var(--cream); margin-bottom: 20px; }
+    .restart-btn {
+      border: none;
+      background: var(--gold);
+      color: var(--ink);
+      font-weight: 800;
+      padding: 12px 24px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <main class="game-table" id="game-table">
+      
+      <!-- SPIELER 2 (Oben, um 180° gespiegelt) -->
+      <section id="zone-player-2" class="player-zone">
+        <div class="player-content opponent-content">
+          <div class="player-meta">
+            <div class="player-badge">
+              <span class="turn-dot"></span>
+              <span class="player-name">Spieler 2</span>
+            </div>
+            <span class="turn-marker">Am Zug</span>
+          </div>
+          <div class="card-row" id="slots-p2"></div>
+        </div>
+      </section>
+
+      <!-- ZENTRUM: DIE 2 STAPEL -->
+      <section class="center-zone">
+        <div class="pile-pair">
+          
+          <!-- Ziehstapel -->
+          <div class="pile-column">
+            <p class="pile-caption">Ziehen</p>
+            <div class="deck-frame" id="draw-pile">
+              <div class="pile-underlayer l1"></div>
+              <div class="pile-underlayer l2"></div>
+              <button class="draw-pile-btn" type="button" aria-label="Karte ziehen"></button>
+            </div>
+          </div>
+
+          <!-- Runden-Beutestapel (Klick = Sichern) -->
+          <div class="pile-column">
+            <p class="pile-caption">Sichern</p>
+            <div class="deck-frame" id="loot-pile">
+              <div class="loot-pile-btn" id="loot-card">
+                <span class="loot-empty-hint">Leer</span>
+                <div class="loot-content">
+                  <span class="loot-badge" id="loot-count">1</span>
+                  <span class="loot-symbol" id="loot-symbol"></span>
+                  <span class="loot-name" id="loot-name"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- SPIELER 1 (Unten, 0° normal) -->
+      <section id="zone-player-1" class="player-zone active-player">
+        <div class="player-content">
+          <div class="player-meta">
+            <div class="player-badge">
+              <span class="turn-dot"></span>
+              <span class="player-name">Spieler 1</span>
+            </div>
+            <span class="turn-marker">Am Zug</span>
+          </div>
+          <div class="card-row" id="slots-p1"></div>
+        </div>
+      </section>
+
+      <!-- RIESEN-DIEB OVERLAY -->
+      <div id="thief-overlay" class="thief-overlay">
+        <div class="thief-avatar">🦹‍♂️</div>
+        <h2 class="thief-title">Haltet den Dieb!</h2>
+        <p class="thief-desc">Er hat alle ungesicherten Schätze dieser Runde gestohlen!</p>
+        <button class="thief-dismiss-btn" type="button">Wegjagen & Weitergeben</button>
+      </div>
+
+      <!-- SIEG OVERLAY -->
+      <div id="win-overlay" class="win-overlay">
+        <div class="win-trophy">🏆</div>
+        <h2 class="win-title" id="win-title">Gewonnen!</h2>
+        <p class="win-desc">Alle 6 Schätze liegen sicher im Tresor!</p>
+        <button class="restart-btn" type="button" onclick="initGame()">Noch eine Runde</button>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    // Die 6 Wertgegenstände
+    const ITEMS = [
+      { id: 'wallet', name: 'Geldbeutel', icon: '👛' },
+      { id: 'gold', name: 'Goldbarren', icon: '🪙' },
+      { id: 'diamond', name: 'Diamant', icon: '💎' },
+      { id: 'horse', name: 'Pferd', icon: '🐴' },
+      { id: 'phone', name: 'Smartphone', icon: '📱' },
+      { id: 'car', name: 'Auto', icon: '🚗' }
+    ];
+
+    let deck = [];
+    let discardPile = [];
+    let activePlayer = 0; // 0 = Spieler 1, 1 = Spieler 2
+    let turnLoot = [];
+    let playerSafes = [[], []]; // Gesicherte Item-IDs
+
+    function buildDeck() {
+      const newDeck = [];
+      // 5x jeder Wertgegenstand = 30 Karten
+      ITEMS.forEach(item => {
+        for (let i = 0; i < 5; i++) {
+          newDeck.push({ type: 'item', ...item });
+        }
+      });
+      // 12x Dieb
+      for (let i = 0; i < 12; i++) {
+        newDeck.push({ type: 'thief', name: 'Dieb', icon: '🦹‍♂️' });
+      }
+      return shuffle(newDeck);
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function triggerVibrate(pattern) {
+      if ('vibrate' in navigator) navigator.vibrate(pattern);
+    }
+
+    function initGame() {
+      deck = buildDeck();
+      discardPile = [];
+      activePlayer = 0;
+      turnLoot = [];
+      playerSafes = [[], []];
+
+      document.getElementById('win-overlay').classList.remove('active');
+      document.getElementById('thief-overlay').classList.remove('active');
+
+      renderSlots();
+      renderTurn();
+    }
+
+    function renderSlots() {
+      [0, 1].forEach(pIdx => {
+        const container = document.getElementById(pIdx === 0 ? 'slots-p1' : 'slots-p2');
+        container.innerHTML = '';
+
+        ITEMS.forEach(defItem => {
+          const slot = document.createElement('div');
+          slot.className = 'card-slot';
+
+          const hasItem = playerSafes[pIdx].includes(defItem.id);
+
+          if (hasItem) {
+            slot.innerHTML = `
+              <div class="mini-card">
+                <span class="sym">${defItem.icon}</span>
+                <span class="val">${defItem.name}</span>
+              </div>
+            `;
+          } else {
+            // Silhouette des gesuchten Gegenstands
+            slot.innerHTML = `<span class="slot-placeholder">${defItem.icon}</span>`;
+          }
+          container.appendChild(slot);
+        });
+      });
+    }
+
+    function renderTurn() {
+      // Aktiven Spieler hervorheben
+      document.getElementById('zone-player-1').classList.toggle('active-player', activePlayer === 0);
+      document.getElementById('zone-player-2').classList.toggle('active-player', activePlayer === 1);
+
+      // Beutestapel der Runde aktualisieren
+      const lootCard = document.getElementById('loot-card');
+      const lootCount = document.getElementById('loot-count');
+      const lootSymbol = document.getElementById('loot-symbol');
+      const lootName = document.getElementById('loot-name');
+
+      if (turnLoot.length > 0) {
+        const top = turnLoot[turnLoot.length - 1];
+        lootCard.classList.add('has-cards');
+        lootCount.textContent = turnLoot.length;
+        lootSymbol.textContent = top.icon;
+        lootName.textContent = top.name;
+      } else {
+        lootCard.classList.remove('has-cards');
+      }
+    }
+
+    function drawCard() {
+      if (deck.length === 0) {
+        deck = shuffle(discardPile);
+        discardPile = [];
+      }
+
+      const card = deck.pop();
+
+      if (card.type === 'thief') {
+        triggerVibrate([180, 70, 180]);
+        // Dieb nimmt Beute
+        discardPile.push(...turnLoot, card);
+        turnLoot = [];
+        renderTurn();
+
+        // Vollbild-Dieb anzeigen
+        document.getElementById('thief-overlay').classList.add('active');
+      } else {
+        triggerVibrate(40);
+        turnLoot.push(card);
+        renderTurn();
+      }
+    }
+
+    function dismissThief() {
+      document.getElementById('thief-overlay').classList.remove('active');
+      switchTurn();
+    }
+
+    function bankLoot() {
+      if (turnLoot.length === 0) return;
+
+      triggerVibrate(70);
+
+      // Schätze in den Tresor
+      turnLoot.forEach(card => {
+        if (!playerSafes[activePlayer].includes(card.id)) {
+          playerSafes[activePlayer].push(card.id);
+        } else {
+          discardPile.push(card);
+        }
+      });
+
+      turnLoot = [];
+      renderSlots();
+      renderTurn();
+
+      // Siegprüfung (alle 6 Teile)
+      if (playerSafes[activePlayer].length === 6) {
+        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+        document.getElementById('win-title').textContent = `${activePlayer === 0 ? 'Spieler 1' : 'Spieler 2'} gewinnt!`;
+        document.getElementById('win-overlay').classList.add('active');
+        return;
+      }
+
+      switchTurn();
+    }
+
+    function switchTurn() {
+      activePlayer = activePlayer === 0 ? 1 : 0;
+      renderTurn();
+    }
+
+    // Event-Listener
+    document.getElementById('draw-pile').addEventListener('click', drawCard);
+    document.getElementById('loot-pile').addEventListener('click', bankLoot);
+    document.getElementById('thief-overlay').addEventListener('click', dismissThief);
+
+    document.addEventListener('DOMContentLoaded', initGame);
+  </script>
+</body>
+</html>
