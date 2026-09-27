@@ -3,9 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Fang den Dieb! – Zu zweit am Tisch</title>
+  <title>Fang den Dieb! – Kartenspiel</title>
+
+  <!-- PWA & Mobile Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b5d50">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DiebSpiel">
+
+  <!-- Schriften & Effekte -->
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,700;9..144,800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
   <style>
     :root {
       --night: #071d1a;
@@ -19,7 +29,12 @@
       --ink: #173e35;
     }
 
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
 
     body {
       width: 100%;
@@ -39,11 +54,11 @@
       display: flex;
       flex-direction: column;
       padding: 10px;
-      max-width: 500px;
+      max-width: 520px;
       margin: 0 auto;
     }
 
-    /* Tisch-Bereich */
+    /* Tisch-Design */
     .game-table {
       position: relative;
       flex: 1;
@@ -142,7 +157,9 @@
       text-transform: uppercase;
     }
 
-    .active-player .turn-marker { display: inline-flex; }
+    .active-player .turn-marker {
+      display: inline-flex;
+    }
 
     .card-row {
       display: grid;
@@ -227,9 +244,8 @@
 
     .deck-frame {
       position: relative;
-      width: 126px;
-      height: 172px;
-      cursor: pointer;
+      width: 130px;
+      height: 176px;
     }
 
     /* Ziehstapel */
@@ -253,7 +269,6 @@
       filter: brightness(1.1);
     }
 
-    /* Schein-Ebenen unter dem Stapel für 3D-Look */
     .pile-underlayer {
       position: absolute;
       inset: 0;
@@ -313,10 +328,6 @@
       text-transform: uppercase;
     }
 
-    .loot-pile-btn.has-cards .loot-empty-hint {
-      display: none;
-    }
-
     .loot-symbol { font-size: 48px; line-height: 1; }
     .loot-name { font-size: 13px; font-weight: 800; margin-top: 4px; }
     .loot-badge {
@@ -332,7 +343,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,.2);
     }
 
-    /* Riesen-Dieb Vollbild-Overlay */
+    /* Riesen-Dieb Overlay */
     .thief-overlay {
       position: absolute;
       inset: 0;
@@ -402,7 +413,7 @@
       position: absolute;
       inset: 0;
       z-index: 60;
-      background: rgba(7, 29, 26, 0.92);
+      background: rgba(7, 29, 26, 0.94);
       backdrop-filter: blur(10px);
       display: none;
       flex-direction: column;
@@ -411,8 +422,8 @@
       text-align: center;
       padding: 24px;
     }
-    .win-overlay.active { display: flex; }
 
+    .win-overlay.active { display: flex; }
     .win-trophy { font-size: 80px; margin-bottom: 10px; }
     .win-title {
       font-family: "Fraunces", serif;
@@ -535,7 +546,7 @@
 
     function buildDeck() {
       const newDeck = [];
-      // 5x jeder Wertgegenstand = 30 Karten
+      // 5x jedes Item = 30 Karten
       ITEMS.forEach(item => {
         for (let i = 0; i < 5; i++) {
           newDeck.push({ type: 'item', ...item });
@@ -593,7 +604,6 @@
               </div>
             `;
           } else {
-            // Silhouette des gesuchten Gegenstands
             slot.innerHTML = `<span class="slot-placeholder">${defItem.icon}</span>`;
           }
           container.appendChild(slot);
@@ -602,11 +612,9 @@
     }
 
     function renderTurn() {
-      // Aktiven Spieler hervorheben
       document.getElementById('zone-player-1').classList.toggle('active-player', activePlayer === 0);
       document.getElementById('zone-player-2').classList.toggle('active-player', activePlayer === 1);
 
-      // Beutestapel der Runde aktualisieren
       const lootCard = document.getElementById('loot-card');
       const lootCount = document.getElementById('loot-count');
       const lootSymbol = document.getElementById('loot-symbol');
@@ -633,12 +641,9 @@
 
       if (card.type === 'thief') {
         triggerVibrate([180, 70, 180]);
-        // Dieb nimmt Beute
         discardPile.push(...turnLoot, card);
         turnLoot = [];
         renderTurn();
-
-        // Vollbild-Dieb anzeigen
         document.getElementById('thief-overlay').classList.add('active');
       } else {
         triggerVibrate(40);
@@ -657,7 +662,6 @@
 
       triggerVibrate(70);
 
-      // Schätze in den Tresor
       turnLoot.forEach(card => {
         if (!playerSafes[activePlayer].includes(card.id)) {
           playerSafes[activePlayer].push(card.id);
@@ -670,7 +674,6 @@
       renderSlots();
       renderTurn();
 
-      // Siegprüfung (alle 6 Teile)
       if (playerSafes[activePlayer].length === 6) {
         confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
         document.getElementById('win-title').textContent = `${activePlayer === 0 ? 'Spieler 1' : 'Spieler 2'} gewinnt!`;
@@ -691,7 +694,15 @@
     document.getElementById('loot-pile').addEventListener('click', bankLoot);
     document.getElementById('thief-overlay').addEventListener('click', dismissThief);
 
-    document.addEventListener('DOMContentLoaded', initGame);
+    document.addEventListener('DOMContentLoaded', () => {
+      initGame();
+      // PWA Service Worker Registrierung
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('PWA Service Worker bereit:', reg.scope))
+          .catch((err) => console.warn('PWA Service Worker Registrierungsfehler:', err));
+      }
+    });
   </script>
 </body>
 </html>
